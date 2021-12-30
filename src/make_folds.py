@@ -1,14 +1,41 @@
 import pandas as pd
 from config import config, global_params
+import numpy as np
 
 # from IPython.display import display
 from sklearn.model_selection import GroupKFold, StratifiedKFold
+
+##################### CUSTOM Sturges' rule ####################################
+
+
+def sturges_rule(df_train: pd.DataFrame) -> pd.DataFrame:
+    """Sturge's rule for number of bins
+
+    Args:
+        df_train (pd.DataFrame): The train dataframe.
+
+    Returns:
+        df_train (pd.DataFrame): The train dataframe with an additional column "bin".
+    """
+
+    num_bins = int(np.floor(1 + np.log2(len(df_train))))
+    # Cut the target Pawpularity into `num_bins` using pd.cut
+    df_train["bins"] = pd.cut(
+        df_train[global_params.MakeFolds().class_col_name],
+        bins=num_bins,
+        labels=False,
+        ordered=True,
+    )
+    df_train["bins"].hist()
+    return df_train
 
 
 def make_folds(
     train_csv: pd.DataFrame, cv_params: global_params.MakeFolds()
 ) -> pd.DataFrame:
     """Split the given dataframe into training folds."""
+    if cv_params.use_sturge is True:
+        cv_params.class_col_name = "bins"
 
     if cv_params.cv_schema == "StratifiedKFold":
         df_folds = train_csv.copy()

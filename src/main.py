@@ -8,8 +8,8 @@ from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 
-# BASE_DIR = Path(__file__).parent.parent.absolute().__str__()
-# sys.path.append(BASE_DIR)
+BASE_DIR = Path(__file__).parent.parent.absolute().__str__()
+sys.path.append(BASE_DIR)
 
 
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -295,7 +295,7 @@ if __name__ == "__main__":
     is_inference = False
     if not is_inference:
         df_oof = train_loop(
-            df_folds=df_folds, is_plot=False, is_forward_pass=False
+            df_folds=df_folds, is_plot=False, is_forward_pass=True
         )
 
     # model_dir = Path(FILES.weight_path, MODEL_PARAMS.model_name).__str__()

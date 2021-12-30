@@ -9,29 +9,32 @@ from config import global_params
 TRANSFORMS = global_params.AugmentationParams()
 
 
-def get_train_transforms(
-    image_size: int = TRANSFORMS.image_size,
-) -> albumentations.core.composition.Compose:
+def get_train_transforms(image_size: int = TRANSFORMS.image_size):
     """Performs Augmentation on training data.
 
     Args:
-        image_size (int, optional): [description]. Defaults to TRANSFORMS.image_size.
+        image_size (int, optional): [description]. Defaults to AUG.image_size.
 
     Returns:
-        (albumentations.core.composition.Compose): [description]
+        [type]: [description]
     """
     return albumentations.Compose(
-        [
-            albumentations.RandomResizedCrop(
-                height=image_size,
-                width=image_size,
-                scale=(0.08, 1.0),
-                ratio=(0.75, 1.3333333333333333),
-            ),
-            albumentations.RandomRotate90(p=0.5),
+        [  # albumentations.RandomResizedCrop(height=image_size, width=image_size),
             albumentations.HorizontalFlip(p=0.5),
-            albumentations.VerticalFlip(p=0.5),
-            albumentations.Cutout(p=0.5),
+            albumentations.VerticalFlip(p=0.1),
+            albumentations.Rotate(limit=180, p=0.5),
+            albumentations.ShiftScaleRotate(
+                shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=0.5
+            ),
+            albumentations.HueSaturationValue(
+                hue_shift_limit=0.2,
+                sat_shift_limit=0.2,
+                val_shift_limit=0.2,
+                p=0.5,
+            ),
+            albumentations.RandomBrightnessContrast(
+                brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5
+            ),
             albumentations.Resize(image_size, image_size),
             albumentations.Normalize(
                 mean=TRANSFORMS.mean,
@@ -44,13 +47,11 @@ def get_train_transforms(
     )
 
 
-def get_valid_transforms(
-    image_size: int = TRANSFORMS.image_size,
-) -> albumentations.core.composition.Compose:
+def get_valid_transforms(image_size: int = TRANSFORMS.image_size):
     """Performs Augmentation on validation data.
 
     Args:
-        image_size (int, optional): [description]. Defaults to TRANSFORMS.image_size.
+        image_size (int, optional): [description]. Defaults to AUG.image_size.
 
     Returns:
         [type]: [description]
@@ -69,13 +70,11 @@ def get_valid_transforms(
     )
 
 
-def get_gradcam_transforms(
-    image_size: int = TRANSFORMS.image_size,
-) -> albumentations.core.composition.Compose:
+def get_gradcam_transforms(image_size: int = TRANSFORMS.image_size):
     """Performs Augmentation on gradcam data.
 
     Args:
-        image_size (int, optional): [description]. Defaults to TRANSFORMS.image_size.
+        image_size (int, optional): [description]. Defaults to AUG.image_size.
 
     Returns:
         [type]: [description]
@@ -96,17 +95,17 @@ def get_gradcam_transforms(
 
 def get_inference_transforms(
     image_size: int = TRANSFORMS.image_size,
-) -> Dict[str, albumentations.core.composition.Compose]:
+) -> Dict[str, albumentations.Compose]:
     """Performs Augmentation on test dataset.
     Returns the transforms for inference in a dictionary which can hold TTA transforms.
 
     Args:
-        image_size (int, optional): [description]. Defaults to TRANSFORMS.image_size.
+        image_size (int, optional): [description]. Defaults to AUG.image_size.
 
     Returns:
         Dict[str, albumentations.Compose]: [description]
     """
-    # TODO: Remember tta transforms need resize and normalize.
+
     transforms_dict = {
         "transforms_test": albumentations.Compose(
             [
@@ -120,13 +119,82 @@ def get_inference_transforms(
                 ToTensorV2(p=1.0),
             ]
         ),
-        # "tta_hflip": albumentations.Compose(
-        #     [
-        #         albumentations.HorizontalFlip(p=1.0),
-        #         albumentations.Resize(image_size, image_size),
-        #         ToTensorV2(),
-        #     ]
-        # ),
+        "tta_flip": albumentations.Compose(
+            [
+                albumentations.HorizontalFlip(p=1),
+                albumentations.Resize(image_size, image_size),
+                albumentations.Normalize(
+                    mean=TRANSFORMS.mean,
+                    std=TRANSFORMS.std,
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+                ToTensorV2(p=1.0),
+            ]
+        ),
+        "tta_rotate": albumentations.Compose(
+            [
+                albumentations.Rotate(limit=180, p=1),
+                albumentations.Resize(image_size, image_size),
+                albumentations.Normalize(
+                    mean=TRANSFORMS.mean,
+                    std=TRANSFORMS.std,
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+                ToTensorV2(p=1.0),
+            ]
+        ),
+        "tta_shift_scale_rotate": albumentations.Compose(
+            [
+                albumentations.ShiftScaleRotate(
+                    shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=1
+                ),
+                albumentations.Resize(image_size, image_size),
+                albumentations.Normalize(
+                    mean=TRANSFORMS.mean,
+                    std=TRANSFORMS.std,
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+                ToTensorV2(p=1.0),
+            ]
+        ),
+        "tta_hue_saturation_value": albumentations.Compose(
+            [
+                albumentations.HueSaturationValue(
+                    hue_shift_limit=0.2,
+                    sat_shift_limit=0.2,
+                    val_shift_limit=0.2,
+                    p=1,
+                ),
+                albumentations.Resize(image_size, image_size),
+                albumentations.Normalize(
+                    mean=TRANSFORMS.mean,
+                    std=TRANSFORMS.std,
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+                ToTensorV2(p=1.0),
+            ]
+        ),
+        "tta_random_brightness_contrast": albumentations.Compose(
+            [
+                albumentations.RandomBrightnessContrast(
+                    brightness_limit=(-0.1, 0.1),
+                    contrast_limit=(-0.1, 0.1),
+                    p=1,
+                ),
+                albumentations.Resize(image_size, image_size),
+                albumentations.Normalize(
+                    mean=TRANSFORMS.mean,
+                    std=TRANSFORMS.std,
+                    max_pixel_value=255.0,
+                    p=1.0,
+                ),
+                ToTensorV2(p=1.0),
+            ]
+        ),
     }
 
     return transforms_dict

@@ -10,30 +10,20 @@ import wandb
 class FilePaths:
     """Class to keep track of the files."""
 
-    train_images: pathlib.Path = pathlib.Path(
-        config.DATA_DIR, "cassava_leaf_disease_classification/train"
-    )
-    test_images: pathlib.Path = pathlib.Path(
-        config.DATA_DIR, "cassava_leaf_disease_classification/test"
-    )
-    train_csv: pathlib.Path = pathlib.Path(
-        config.DATA_DIR, "cassava_leaf_disease_classification/raw/train.csv"
-    )
-    test_csv: pathlib.Path = pathlib.Path(
-        config.DATA_DIR, "cassava_leaf_disease_classification/raw/test.csv"
-    )
+    train_images: pathlib.Path = pathlib.Path(config.DATA_DIR, "train")
+    test_images: pathlib.Path = pathlib.Path(config.DATA_DIR, "test")
+    train_csv: pathlib.Path = pathlib.Path(config.DATA_DIR, "raw/train.csv")
+    test_csv: pathlib.Path = pathlib.Path(config.DATA_DIR, "raw/test.csv")
     sub_csv: pathlib.Path = pathlib.Path(
         config.DATA_DIR,
-        "cassava_leaf_disease_classification/raw/sample_submission.csv",
+        "raw/sample_submission.csv",
     )
     folds_csv: pathlib.Path = pathlib.Path(
         config.DATA_DIR,
-        "cassava_leaf_disease_classification/processed/train.csv",
+        "processed/train.csv",
     )
     weight_path: pathlib.Path = pathlib.Path(config.MODEL_DIR)
-    oof_csv: pathlib.Path = pathlib.Path(
-        config.DATA_DIR, "cassava_leaf_disease_classification/processed"
-    )
+    oof_csv: pathlib.Path = pathlib.Path(config.DATA_DIR, "processed")
     wandb_dir: pathlib.Path = pathlib.Path(config.WANDB_DIR)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -47,18 +37,18 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 32,
-            "num_workers": 0,
+            "batch_size": 16,
+            "num_workers": 2,
             "pin_memory": True,
-            "drop_last": False,
+            "drop_last": True,
             "shuffle": True,
             "collate_fn": None,
         }
     )
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 32,
-            "num_workers": 0,
+            "batch_size": 16,
+            "num_workers": 2,
             "pin_memory": True,
             "drop_last": False,
             "shuffle": False,
@@ -114,17 +104,14 @@ class MakeFolds:
     folds_csv (str): path to the folds csv.
     """
 
-    seed: int = 1992
+    seed: int = 199294
     num_folds: int = 5
     cv_schema: str = "StratifiedKFold"
-    class_col_name: str = "label"
-    image_col_name: str = "image_id"
-
-    # TODO: To connect with FILES
-    folds_csv: pathlib.Path = pathlib.Path(
-        config.DATA_DIR,
-        "cassava_leaf_disease_classification/processed/train.csv",
-    )
+    class_col_name: str = "Pawpularity"
+    image_col_name: str = "Id"
+    image_extension: str = ".jpg"  # ".jpg"
+    use_sturge: bool = True
+    folds_csv: pathlib.Path = FilePaths().folds_csv
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -137,10 +124,10 @@ class AugmentationParams:
 
     mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
     std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
-    image_size: int = 256
+    image_size: int = 224
     mixup: bool = False
     mixup_params: Dict[str, Any] = field(
-        default_factory=lambda: {"mixup_alpha": 1, "use_cuda": True}
+        default_factory=lambda: {"mixup_alpha": 0.5, "use_cuda": True}
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -152,26 +139,20 @@ class AugmentationParams:
 class CriterionParams:
     """A class to track loss function parameters."""
 
-    train_criterion_name: str = "CrossEntropyLoss"
-    valid_criterion_name: str = "CrossEntropyLoss"
+    train_criterion_name: str = "BCEWithLogitsLoss"
+    valid_criterion_name: str = "BCEWithLogitsLoss"
     train_criterion_params: Dict[str, Any] = field(
         default_factory=lambda: {
             "weight": None,
-            "size_average": None,
-            "ignore_index": -100,
-            "reduce": None,
             "reduction": "mean",
-            "label_smoothing": 0.0,
+            "pos_weight": None,
         }
     )
     valid_criterion_params: Dict[str, Any] = field(
         default_factory=lambda: {
             "weight": None,
-            "size_average": None,
-            "ignore_index": -100,
-            "reduce": None,
             "reduction": "mean",
-            "label_smoothing": 0.0,
+            "pos_weight": None,
         }
     )
 
@@ -189,12 +170,11 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "tf_efficientnet_b0_ns"  # Debug
-
+    model_name: str = "swin_base_patch4_window7_224"  # Debug
     pretrained: bool = True
     input_channels: int = 3
-    output_dimension: int = 5
-    classification_type: str = "multiclass"
+    output_dimension: int = 1
+    classification_type: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -216,7 +196,7 @@ class ModelParams:
 @dataclass
 class GlobalTrainParams:
     debug: bool = True
-    debug_multipler: int = 2
+    debug_multipler: int = 16
     epochs: int = 2  # 1 or 2 when debug
     use_amp: bool = True
     mixup: bool = AugmentationParams().mixup
@@ -242,7 +222,7 @@ class OptimizerParams:
     optimizer_name: str = "AdamW"
     optimizer_params: Dict[str, Any] = field(
         default_factory=lambda: {
-            "lr": 1e-3,
+            "lr": 3e-4,
             "betas": (0.9, 0.999),
             "amsgrad": False,
             "weight_decay": 1e-3,
@@ -260,7 +240,7 @@ class OptimizerParams:
 class SchedulerParams:
     """A class to track Scheduler Params."""
 
-    scheduler_name: str = "CosineAnnealingWarmRestarts"  # Debug
+    scheduler_name: str = "OneCycleLR"  # Debug
     # scheduler_name: str = "OneCycleLR"
     if scheduler_name == "CosineAnnealingWarmRestarts":
 
@@ -275,9 +255,13 @@ class SchedulerParams:
     elif scheduler_name == "OneCycleLR":
         scheduler_params: Dict[str, Any] = field(
             default_factory=lambda: {
-                "max_lr": 3e-4,
+                "max_lr": 3e-5,
                 "steps_per_epoch": DataLoaderParams().get_len_train_loader(),
                 "epochs": GlobalTrainParams().epochs,
+                "pct_start": 0.3,
+                "anneal_strategy": "cos",
+                "div_factor": 25,  # default is 25
+                "three_phase": False,
                 "last_epoch": -1,
             }
         )
@@ -291,7 +275,7 @@ class SchedulerParams:
 class WandbParams:
     """A class to track wandb parameters."""
 
-    project: str = "Cassava"
+    project: str = "Petfinder"
     entity: str = "reighns"
     save_code: bool = True
     job_type: str = "Train"
