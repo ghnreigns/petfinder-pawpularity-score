@@ -1,5 +1,5 @@
 import functools
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, OrderedDict, Tuple, Union
 
 import timm
 import torch
@@ -48,16 +48,19 @@ class CustomNeuralNet(torch.nn.Module):
         self.in_features = self.backbone.num_features
         self.out_features = out_features
 
-        # Custom Head
-        # self.single_head_fc = torch.nn.Sequential(
-        #     torch.nn.Linear(self.in_features, self.in_features),
-        #     torch.nn.ReLU(),
-        #     torch.nn.Dropout(p=0.2),
-        #     torch.nn.Linear(self.in_features, self.out_features),
-        # )
+        # Custom Head: Following Abshiek's structure, where he did not have activations in between.
+
         self.single_head_fc = torch.nn.Sequential(
-            torch.nn.Linear(self.in_features, self.out_features),
+            OrderedDict(
+                [
+                    ("linear_1", torch.nn.Linear(self.in_features, 128)),
+                    ("dropout_1", torch.nn.Dropout(p=0.1)),
+                    ("linear_2", torch.nn.Linear(128, 64)),
+                    ("linear_3", torch.nn.Linear(64, self.out_features)),
+                ]
+            )
         )
+
         self.architecture: Dict[str, Callable] = {
             "backbone": self.backbone,
             "bottleneck": None,

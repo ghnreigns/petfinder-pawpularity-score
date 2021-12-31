@@ -121,6 +121,20 @@ def log_gradcam(curr_fold_best_checkpoint, df_oof, plot_gradcam: bool = True):
     elif "resnet" in MODEL_PARAMS.model_name:
         target_layers = [model.backbone.layer4[-1]]
 
+    elif "swin" in MODEL_PARAMS.model_name:
+        # https://github.com/jacobgil/pytorch-grad-cam/blob/master/usage_examples/swinT_example.py
+        def reshape_transform(tensor, height=7, width=7):
+            result = tensor.reshape(
+                tensor.size(0), height, width, tensor.size(2)
+            )
+
+            # Bring the channels to the first dimension,
+            # like in CNNs.
+            result = result.permute(0, 3, 1, 2)
+            return result
+
+        target_layers = [model.backbone.layers[-1].blocks[-1].norm2]
+
     # load gradcam_dataset
     gradcam_dataset = dataset.CustomDataset(
         df=df_oof,
@@ -146,9 +160,9 @@ def log_gradcam(curr_fold_best_checkpoint, df_oof, plot_gradcam: bool = True):
         gradcam_output = gradcam(input_tensor=X_unsqueezed)
         original_image = original_image.cpu().detach().numpy() / 255.0
         y_true = y.cpu().detach().numpy()
-        y_pred = df_oof.loc[df_oof["image_id"] == image_id, "oof_preds"].values[
-            0
-        ]
+        y_pred = df_oof.loc[
+            df_oof[FOLDS.image_col_name] == image_id, "oof_preds"
+        ].values[0]
 
         assert (
             original_image.shape[-1] == 3
