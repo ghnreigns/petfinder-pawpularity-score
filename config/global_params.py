@@ -37,7 +37,7 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 16,
+            "batch_size": 32,
             "num_workers": 2,
             "pin_memory": True,
             "drop_last": True,
@@ -47,7 +47,7 @@ class DataLoaderParams:
     )
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 16,
+            "batch_size": 32,
             "num_workers": 2,
             "pin_memory": True,
             "drop_last": False,
@@ -171,7 +171,7 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "swin_base_patch4_window7_224"  # Debug
+    model_name: str = "swin_tiny_patch4_window7_224"  # Debug
     pretrained: bool = True
     input_channels: int = 3
     output_dimension: int = 1
@@ -196,9 +196,9 @@ class ModelParams:
 
 @dataclass
 class GlobalTrainParams:
-    debug: bool = True
+    debug: bool = False
     debug_multipler: int = 16
-    epochs: int = 1  # 1 or 2 when debug
+    epochs: int = 10  # 1 or 2 when debug
     use_amp: bool = True
     mixup: bool = AugmentationParams().mixup
     patience: int = 2
