@@ -300,3 +300,28 @@ def calculate_cv_metrics(df_oof):
     cv_std_d["cv_std_auroc"] = cv_std_auroc
 
     return cv_mean_d, cv_std_d
+
+
+import torchmetrics
+
+
+def mse_torch(
+    y_true: torch.Tensor, y_pred: torch.Tensor, is_rmse: bool = True
+) -> torch.Tensor:
+    """Compute r/mse score for regression.
+
+    Args:
+        y_true (torch.Tensor): True labels.
+        y_pred (torch.Tensor): Predicted labels.
+        is_rmse (bool): Whether return mse or rmse.
+
+    Returns:
+        squared_error (torch.Tensor): The squared error
+    """
+
+    squared = True if is_rmse is False else False
+    squared_error = torchmetrics.MeanSquaredError(squared=squared)(
+        y_pred, y_true
+    )
+
+    return squared_error

@@ -111,6 +111,7 @@ class MakeFolds:
     image_col_name: str = "Id"
     image_extension: str = ".jpg"  # ".jpg"
     use_sturge: bool = True
+    is_normalize: bool = True
     folds_csv: pathlib.Path = FilePaths().folds_csv
 
     def to_dict(self) -> Dict[str, Any]:
@@ -195,9 +196,9 @@ class ModelParams:
 
 @dataclass
 class GlobalTrainParams:
-    debug: bool = True
+    debug: bool = False
     debug_multipler: int = 16
-    epochs: int = 2  # 1 or 2 when debug
+    epochs: int = 10  # 1 or 2 when debug
     use_amp: bool = True
     mixup: bool = AugmentationParams().mixup
     patience: int = 2
@@ -241,7 +242,6 @@ class SchedulerParams:
     """A class to track Scheduler Params."""
 
     scheduler_name: str = "OneCycleLR"  # Debug
-    # scheduler_name: str = "OneCycleLR"
     if scheduler_name == "CosineAnnealingWarmRestarts":
 
         scheduler_params: Dict[str, Any] = field(

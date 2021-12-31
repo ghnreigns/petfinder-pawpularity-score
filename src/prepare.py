@@ -63,6 +63,9 @@ def prepare_data(
         lambda x: return_filepath(x, folder=FILES.test_images)
     )
 
+    if FOLDS.is_normalize:
+        df_train[FOLDS.class_col_name] = df_train[FOLDS.class_col_name] / 100
+
     if FOLDS.use_sturge:
         df_train = make_folds.sturges_rule(df_train)
     df_folds = make_folds.make_folds(train_csv=df_train, cv_params=FOLDS)

@@ -55,9 +55,9 @@ class Trainer:
         # list to contain various train metrics
         # TODO: how to add more metrics? wandb log too. Maybe save to model artifacts?
         self.monitored_metric = {
-            "metric_name": "valid_macro_auroc",
+            "metric_name": "valid_rmse",
             "metric_score": None,
-            "mode": "max",
+            "mode": "min",
         }
         # Metric to optimize, either min or max.
         self.best_valid_score = (
@@ -224,6 +224,20 @@ class Trainer:
 
         return {"accuracy": torchmetrics_accuracy, "macro_auroc": macro_auc}
 
+    def get_regression_metrics(
+        self,
+        y_trues: torch.Tensor,
+        y_preds: torch.Tensor,
+        y_probs: torch.Tensor,
+    ):
+        ### ONLY FOR THIS COMP YOU NEED TO DENORMALIZE ###
+        y_trues = y_trues * 100
+        y_probs = y_probs * 100
+        mse = metrics.mse_torch(y_trues, y_probs, is_rmse=False)
+        rmse = metrics.mse_torch(y_trues, y_probs, is_rmse=True)
+
+        return {"mse": mse, "rmse": rmse}
+
     @staticmethod
     def get_lr(optimizer: torch.optim) -> float:
         """Get the learning rate of the current epoch.
@@ -309,24 +323,20 @@ class Trainer:
                 "%H:%M:%S", time.gmtime(time.time() - val_start_time)
             )
 
-            valid_metrics_dict = self.get_classification_metrics(
+            valid_metrics_dict = self.get_regression_metrics(
                 valid_trues,
                 valid_preds,
                 valid_probs,
             )
-
-            valid_accuracy, valid_macro_auroc = (
-                valid_metrics_dict["accuracy"],
-                valid_metrics_dict["macro_auroc"],
-            )
+            valid_rmse = valid_metrics_dict["rmse"]
 
             # TODO: Still need save each metric for each epoch into a list history. Rename properly
             # TODO: Log each metric to wandb and log file.
 
             config.logger.info(
-                f"\n[RESULT]: Validation. Epoch {_epoch}\nAvg Val Summary Loss: {valid_loss:.3f}\
-                \nAvg Val Accuracy: {valid_accuracy:.3f}\nAvg Val Macro AUROC: {valid_macro_auroc:.3f}\
-                \nTime Elapsed: {valid_elapsed_time}\n"
+                f"[RESULT]: Validation. Epoch {_epoch} | Avg Val Summary Loss: {valid_loss:.3f} | "
+                f"Valid RMSE: {valid_rmse:.3f} | "
+                f"Time Elapsed: {valid_elapsed_time}\n"
             )
 
             ########################### End of Validation ##############################
@@ -334,8 +344,7 @@ class Trainer:
             ########################### Start of Wandb #################################
             self.history["epoch"].append(_epoch)
             self.history["valid_loss"].append(valid_loss)
-            self.history["valid_accuracy"].append(valid_accuracy)
-            self.history["valid_macro_auroc"].append(valid_macro_auroc)
+            self.history["valid_rmse"].append(valid_rmse)
             self.log_metrics(_epoch, self.history)
             ########################### End of Wandb ###################################
 
@@ -345,9 +354,8 @@ class Trainer:
 
             # User has to choose a few metrics to monitor.
             # Here I chose valid_loss and valid_macro_auroc.
-            self.monitored_metric["metric_score"] = torch.clone(
-                valid_macro_auroc
-            )
+            self.monitored_metric["metric_score"] = torch.clone(valid_rmse)
+
             if self.early_stopping is not None:
                 # TODO: Implement this properly, Add save_model_artifacts here as well.
                 best_score, early_stop = self.early_stopping.should_stop(
@@ -368,6 +376,21 @@ class Trainer:
                         self.monitored_metric["metric_score"]
                         > self.best_valid_score
                     ):
+                        config.logger.info(
+                            f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
+                        )
+                        self.best_valid_score = self.monitored_metric[
+                            "metric_score"
+                        ]
+
+                else:
+                    if (
+                        self.monitored_metric["metric_score"]
+                        < self.best_valid_score
+                    ):
+                        self.best_valid_score = self.monitored_metric[
+                            "metric_score"
+                        ]
                         config.logger.info(
                             f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
                         )
@@ -421,15 +444,6 @@ class Trainer:
                                 f"\n\nEarly Stopping, patience reached!\n\nbest valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
                             )
                             break
-                else:
-                    if (
-                        self.monitored_metric["metric_score"]
-                        < self.best_valid_score
-                    ):
-                        self.best_valid_score = self.monitored_metric[
-                            "metric_score"
-                        ]
-
             ########################## End of Early Stopping ############################
             ########################## End of Model Saving ##############################
 
@@ -444,7 +458,7 @@ class Trainer:
                 else:
                     self.scheduler.step()
 
-            ########################## End of Scheduler #################################
+        ############################## End of Scheduler #################################
 
         ########################## Load Best Model ######################################
         # Load current checkpoint so we can get model's oof predictions, often in the form of probabilities.
