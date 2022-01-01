@@ -7,6 +7,7 @@ import sys
 # import pretty_errors  # NOQA: F401 (imported but unused)
 # from rich.logging import RichHandler
 import torch
+from typing import Optional
 
 ########################################################### Repository's Names ###########################################################
 AUTHOR = "Hongnan G."

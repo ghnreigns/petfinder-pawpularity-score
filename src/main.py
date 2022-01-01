@@ -37,6 +37,7 @@ from torch._C import device
 import gc
 import wandb
 import matplotlib.pyplot as plt
+import shutil
 
 FILES = global_params.FilePaths()
 FOLDS = global_params.MakeFolds()
@@ -53,6 +54,7 @@ main_logger = config.init_logger(
     module_name="main",
 )
 
+shutil.copy(FILES.global_params_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
 
 # Typer CLI app
 app = typer.Typer()
@@ -292,9 +294,8 @@ def train_loop(*args, **kwargs):
         # cv_score_list.append(curr_fold_best_score)
         # print("\n\n\nOOF Score for Fold {}: {}\n\n\n".format(fold, curr_fold_best_score))
 
-    cv_mean_d, cv_std_d = metrics.calculate_cv_metrics(df_oof)
-    main_logger.info(f"\n\n\nMEAN CV: {cv_mean_d}\n\n\n")
-    main_logger.info(f"\n\n\nSTD CV: {cv_std_d}\n\n\n")
+    # cv_mean_d, cv_std_d = metrics.calculate_cv_metrics(df_oof)
+    # main_logger.info(f"\n\n\nMEAN CV: {cv_mean_d}\n\n\nSTD CV: {cv_std_d}")
 
     # print("Five Folds OOF", get_oof_roc(config, oof_df))
 

@@ -26,6 +26,9 @@ class FilePaths:
     weight_path: pathlib.Path = pathlib.Path(config.MODEL_REGISTRY)
     oof_csv: pathlib.Path = pathlib.Path(config.DATA_DIR, "processed")
     wandb_dir: pathlib.Path = pathlib.Path(config.WANDB_DIR)
+    global_params_path: pathlib.Path = pathlib.Path(
+        config.CONFIG_DIR, "global_params.py"
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -40,7 +43,7 @@ class DataLoaderParams:
         default_factory=lambda: {
             "batch_size": 32,
             "num_workers": 2,
-            "pin_memory": True,
+            "pin_memory": False,
             "drop_last": True,
             "shuffle": True,
             "collate_fn": None,
@@ -50,7 +53,7 @@ class DataLoaderParams:
         default_factory=lambda: {
             "batch_size": 32,
             "num_workers": 2,
-            "pin_memory": True,
+            "pin_memory": False,
             "drop_last": False,
             "shuffle": False,
             "collate_fn": None,
@@ -105,7 +108,7 @@ class MakeFolds:
     folds_csv (str): path to the folds csv.
     """
 
-    seed: int = 199294
+    seed: int = 2021
     num_folds: int = 5
     cv_schema: str = "StratifiedKFold"
     class_col_name: str = "Pawpularity"
@@ -199,7 +202,7 @@ class ModelParams:
 class GlobalTrainParams:
     debug: bool = False
     debug_multipler: int = 16
-    epochs: int = 10  # 1 or 2 when debug
+    epochs: int = 20  # 1 or 2 when debug
     use_amp: bool = True
     mixup: bool = AugmentationParams().mixup
     patience: int = 2
@@ -224,10 +227,10 @@ class OptimizerParams:
     optimizer_name: str = "AdamW"
     optimizer_params: Dict[str, Any] = field(
         default_factory=lambda: {
-            "lr": 3e-4,
+            "lr": 1e-5,
             "betas": (0.9, 0.999),
             "amsgrad": False,
-            "weight_decay": 1e-3,
+            "weight_decay": 0.01,
             "eps": 1e-08,
         }
     )
@@ -242,14 +245,14 @@ class OptimizerParams:
 class SchedulerParams:
     """A class to track Scheduler Params."""
 
-    scheduler_name: str = "OneCycleLR"  # Debug
+    scheduler_name: str = "CosineAnnealingWarmRestarts"  # Debug
     if scheduler_name == "CosineAnnealingWarmRestarts":
 
         scheduler_params: Dict[str, Any] = field(
             default_factory=lambda: {
-                "T_0": 10,
+                "T_0": 20,
                 "T_mult": 1,
-                "eta_min": 1e-6,
+                "eta_min": 1e-4,
                 "last_epoch": -1,
             }
         )
