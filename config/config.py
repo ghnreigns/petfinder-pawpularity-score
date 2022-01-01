@@ -1,8 +1,8 @@
 # Configurations
 import logging
 import warnings
-from logging import INFO, FileHandler, Formatter, StreamHandler, getLogger
 from pathlib import Path
+import sys
 
 # import pretty_errors  # NOQA: F401 (imported but unused)
 # from rich.logging import RichHandler
@@ -23,7 +23,6 @@ BASE_DIR = Path(__file__).parent.parent.absolute()  # C:\Users\reigHns\mnist
 CONFIG_DIR = Path(BASE_DIR, "config")
 LOGS_DIR = Path(BASE_DIR, "logs")
 DATA_DIR = Path(BASE_DIR, "data")
-MODEL_DIR = Path(BASE_DIR, "model")
 STORES_DIR = Path(BASE_DIR, "stores")
 
 
@@ -45,7 +44,6 @@ WANDB_DIR = Path(STORES_DIR, "wandb")
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
-MODEL_DIR.mkdir(parents=True, exist_ok=True)
 STORES_DIR.mkdir(parents=True, exist_ok=True)
 BLOB_STORE.mkdir(parents=True, exist_ok=True)
 FEATURE_STORE.mkdir(parents=True, exist_ok=True)
@@ -71,7 +69,11 @@ TENSORBOARD.mkdir(parents=True, exist_ok=True)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
-def init_logger(log_file: str = Path(LOGS_DIR, "info.log")) -> logging.Logger:
+def init_logger(
+    log_file: str = Path(LOGS_DIR, "info.log"),
+    module_name: Optional[str] = None,
+    level=logging.INFO,
+) -> logging.Logger:
     """Initialize logger and save to file.
 
     Consider having more log_file paths to save, eg: debug.log, error.log, etc.
@@ -82,20 +84,22 @@ def init_logger(log_file: str = Path(LOGS_DIR, "info.log")) -> logging.Logger:
     Returns:
         logging.Logger: [description]
     """
-    logger = getLogger(__name__)
-    logger.setLevel(INFO)
-    stream_handler = StreamHandler()
+
+    if module_name is None:
+        logger = logging.getLogger(__name__)
+    else:
+        # get module name, useful for multi-module logging
+        logger = logging.getLogger(module_name)
+
+    logger.setLevel(level)
+    stream_handler = logging.StreamHandler(stream=sys.stdout)
     stream_handler.setFormatter(
-        Formatter("%(asctime)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+        logging.Formatter("%(asctime)s: %(message)s", "%Y-%m-%d %H:%M:%S")
     )
-    file_handler = FileHandler(filename=log_file)
+    file_handler = logging.FileHandler(filename=log_file)
     file_handler.setFormatter(
-        Formatter("%(asctime)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+        logging.Formatter("%(asctime)s: %(message)s", "%Y-%m-%d %H:%M:%S")
     )
     logger.addHandler(stream_handler)
     logger.addHandler(file_handler)
-
     return logger
-
-
-logger = init_logger()

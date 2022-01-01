@@ -9,10 +9,18 @@ import torchmetrics
 from torchmetrics.classification import auroc
 import pandas as pd
 import collections
+from pathlib import Path
 
 FOLDS = global_params.MakeFolds()
 TRAIN_PARAMS = global_params.GlobalTrainParams()
+LOGS_PARAMS = global_params.LogsParams()
 
+# TODO: Add regression metrics.
+
+metrics_logger = config.init_logger(
+    log_file=Path.joinpath(LOGS_PARAMS.LOGS_DIR_RUN_ID, "metrics.log"),
+    module_name="metrics",
+)
 # TODO: Add regression metrics.
 
 
@@ -215,13 +223,13 @@ def tp_fp_tn_fn_binary(
         raise ValueError("Either y_pred or y_prob should be provided.")
 
     if y_pred is not None:
-        config.logger.info("Using y_pred to calculate tp, fp, tn, fn.")
+        metrics_logger.info("Using y_pred to calculate tp, fp, tn, fn.")
         assert y_prob is None, "y_prob should be None if y_pred is provided."
         macro_cm = torchmetrics.StatScores(reduce=reduce, num_classes=2)(
             y_pred, y_true
         )
     else:
-        config.logger.info("Using y_prob to calculate tp, fp, tn, fn.")
+        metrics_logger.info("Using y_prob to calculate tp, fp, tn, fn.")
         assert y_pred is None, "y_pred should be None if y_prob is provided."
 
         macro_cm_dict = {}
@@ -252,7 +260,7 @@ def calculate_cv_metrics(df_oof):
     accuracy_per_fold, macro_roc_auc_per_fold = [], []
 
     for fold in range(1, num_folds + 1):
-        config.logger.info(f"Calculating metrics for fold {fold}.")
+        metrics_logger.info(f"Calculating metrics for fold {fold}.")
 
         y_true, y_probs, y_preds = (
             df_oof.loc[df_oof["fold"] == fold, "oof_trues"].values,

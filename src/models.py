@@ -5,12 +5,17 @@ import timm
 import torch
 import torchsummary
 from config import config, global_params
-
+from pathlib import Path
 from src import utils
 
 MODEL_PARAMS = global_params.ModelParams
-
+LOGS_PARAMS = global_params.LogsParams()
 device = config.DEVICE
+
+models_logger = config.init_logger(
+    log_file=Path.joinpath(LOGS_PARAMS.LOGS_DIR_RUN_ID, "models.log"),
+    module_name="models",
+)
 
 
 class CustomNeuralNet(torch.nn.Module):
@@ -37,7 +42,7 @@ class CustomNeuralNet(torch.nn.Module):
         self.backbone = timm.create_model(
             model_name, pretrained=self.pretrained, in_chans=self.in_channels
         )
-        config.logger.info(
+        models_logger.info(
             f"\nModel: {model_name}\nPretrained: {pretrained}\nIn Channels: {in_channels}\n"
         )
 
@@ -160,16 +165,16 @@ def forward_pass(
     image_size = (channel, height, width)
 
     try:
-        config.logger.info("Model Summary:")
+        models_logger.info("Model Summary:")
         torchsummary.summary(model, image_size)
     except RuntimeError:
-        config.logger.debug(f"The channel is {channel}. Check!")
+        models_logger.debug(f"The channel is {channel}. Check!")
 
     X = torch.randn((batch_size, *image_size)).to(device)
     y = model(image=X)
-    config.logger.info("Forward Pass Successful!")
-    config.logger.info(f"X: {X.shape} \ny: {y.shape}")
-    config.logger.info(f"X[0][0][0]: {X[0][0][0][0]} \ny[0][0][0]: {y[0][0]}")
+    models_logger.info("Forward Pass Successful!")
+    models_logger.info(f"X: {X.shape} \ny: {y.shape}")
+    models_logger.info(f"X[0][0][0]: {X[0][0][0][0]} \ny[0][0][0]: {y[0][0]}")
 
     utils.free_gpu_memory(model, X, y)
     return X, y

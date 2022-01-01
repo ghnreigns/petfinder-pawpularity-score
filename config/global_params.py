@@ -4,6 +4,7 @@ import pathlib
 from typing import Any, Dict, List
 from config import config
 import wandb
+from pathlib import Path
 
 
 @dataclass
@@ -22,7 +23,7 @@ class FilePaths:
         config.DATA_DIR,
         "processed/train.csv",
     )
-    weight_path: pathlib.Path = pathlib.Path(config.MODEL_DIR)
+    weight_path: pathlib.Path = pathlib.Path(config.MODEL_REGISTRY)
     oof_csv: pathlib.Path = pathlib.Path(config.DATA_DIR, "processed")
     wandb_dir: pathlib.Path = pathlib.Path(config.WANDB_DIR)
 
@@ -286,3 +287,15 @@ class WandbParams:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
+
+
+@dataclass
+class LogsParams:
+    """A class to track logging parameters."""
+
+    # TODO: Slightly unclear as we decouple the mkdir logic from config.py. May consider to move it to config.py somehow.
+    # What is preventing this is I need to pass in the run id from WANDB to the logs folder. Same happens in trainer.py when creating model dir.
+    LOGS_DIR_RUN_ID = Path.joinpath(
+        config.LOGS_DIR, f"run_id_{WandbParams().group}"
+    )
+    Path.mkdir(LOGS_DIR_RUN_ID, parents=True, exist_ok=True)

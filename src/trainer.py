@@ -15,8 +15,12 @@ FILES = global_params.FilePaths()
 CRITERION_PARAMS = global_params.CriterionParams()
 SCHEDULER_PARAMS = global_params.SchedulerParams()
 OPTIMIZER_PARAMS = global_params.OptimizerParams()
+LOGS_PARAMS = global_params.LogsParams()
 
-
+training_logger = config.init_logger(
+    log_file=Path.joinpath(LOGS_PARAMS.LOGS_DIR_RUN_ID, "training.log"),
+    module_name="training",
+)
 # TODO: Make use of gc.collect and torch.cuda.empty_cache to free up memory especially for transformers https://github.com/huggingface/transformers/issues/1742
 # TODO: Consider saving image embeddings and everything under the sun in trainer, so we don't need to do it again during inference or PP.
 
@@ -65,6 +69,17 @@ class Trainer:
         )
         self.patience_counter = self.params.patience  # Early Stopping Counter
         self.history = DefaultDict(list)
+
+        ########################################## Define Weight Paths ###################################################################
+        # Note that now the model save path has wandb_run's group id appended for me to easily recover which run corresponds to which model.
+        self.model_path = Path(
+            FILES.weight_path,
+            f"{self.params.model_name}_{self.wandb_run.group}",
+        )
+        # create model directory if not exist and model_directory with run_id to identify easily.
+        Path.mkdir(self.model_path, exist_ok=True)
+
+        ########################################################################################################################################
 
     @staticmethod
     def get_optimizer(
@@ -271,7 +286,7 @@ class Trainer:
         self.wandb_run.watch(self.model, log_freq=100)
         self.best_valid_loss = np.inf
 
-        config.logger.info(
+        training_logger.info(
             f"\nTraining on Fold {fold} and using {self.params.model_name}\n"
         )
 
@@ -292,7 +307,7 @@ class Trainer:
                 "%H:%M:%S", time.gmtime(time.time() - train_start_time)
             )
 
-            config.logger.info(
+            training_logger.info(
                 f"\n[RESULT]: Train. Epoch {_epoch}:\nAvg Train Summary Loss: {train_loss:.3f}\
                 \nLearning Rate: {curr_lr:.5f}\nTime Elapsed: {train_time_elapsed}\n"
             )
@@ -333,7 +348,7 @@ class Trainer:
             # TODO: Still need save each metric for each epoch into a list history. Rename properly
             # TODO: Log each metric to wandb and log file.
 
-            config.logger.info(
+            training_logger.info(
                 f"[RESULT]: Validation. Epoch {_epoch} | Avg Val Summary Loss: {valid_loss:.3f} | "
                 f"Valid RMSE: {valid_rmse:.3f} | "
                 f"Time Elapsed: {valid_elapsed_time}\n"
@@ -364,7 +379,7 @@ class Trainer:
                 self.best_valid_loss = best_score
 
                 if early_stop:
-                    config.logger.info("Stopping Early!")
+                    training_logger.info("Stopping Early!")
                     break
             else:
 
@@ -376,7 +391,7 @@ class Trainer:
                         self.monitored_metric["metric_score"]
                         > self.best_valid_score
                     ):
-                        config.logger.info(
+                        training_logger.info(
                             f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
                         )
                         self.best_valid_score = self.monitored_metric[
@@ -391,7 +406,7 @@ class Trainer:
                         self.best_valid_score = self.monitored_metric[
                             "metric_score"
                         ]
-                        config.logger.info(
+                        training_logger.info(
                             f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
                         )
                         self.best_valid_score = self.monitored_metric[
@@ -400,17 +415,9 @@ class Trainer:
                         # Reset patience counter as we found a new best score
                         patience_counter_ = self.patience_counter
                         # TODO: Overwrite model saving whenever a better score is found. Currently this part is clumsy because we need to shift it to the else clause if we are monitoring min metrics. Do you think it is a good idea to put this chunk in save_model_artifacts instead?
-                        # Note that now the model save path has wandb_run's group id appended for me to easily recover which run corresponds to which model.
-                        model_path = Path(
-                            FILES.weight_path,
-                            f"{self.params.model_name}_{self.wandb_run.group}",
-                        )
-                        # create model directory if not exist
-                        # TODO: Create model_directory with run_id to identify easily.
-                        os.makedirs(model_path, exist_ok=True)
 
                         saved_model_path = Path(
-                            model_path,
+                            self.model_path,
                             f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
                         )
                         self.save_model_artifacts(
@@ -431,16 +438,16 @@ class Trainer:
                             ),
                         )
 
-                        config.logger.info(
+                        training_logger.info(
                             f"\nSaving model with best valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
                         )
                     else:
                         patience_counter_ -= 1
-                        config.logger.info(
+                        training_logger.info(
                             f"Patience Counter {patience_counter_}"
                         )
                         if patience_counter_ == 0:
-                            config.logger.info(
+                            training_logger.info(
                                 f"\n\nEarly Stopping, patience reached!\n\nbest valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
                             )
                             break
@@ -464,7 +471,7 @@ class Trainer:
         # Load current checkpoint so we can get model's oof predictions, often in the form of probabilities.
         curr_fold_best_checkpoint = self.load(
             Path(
-                model_path,
+                self.model_path,
                 f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
             )
         )

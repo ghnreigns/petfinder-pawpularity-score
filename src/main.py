@@ -1,6 +1,6 @@
 from __future__ import generators, print_function
 
-import os
+
 import sys
 
 from pathlib import Path
@@ -12,9 +12,6 @@ BASE_DIR = Path(__file__).parent.parent.absolute().__str__()
 sys.path.append(BASE_DIR)
 
 
-from typing import Any, Callable, Dict, List, Optional, Union
-
-import numpy as np
 import pandas as pd
 
 import torch
@@ -47,8 +44,14 @@ MODEL_PARAMS = global_params.ModelParams()
 LOADER_PARAMS = global_params.DataLoaderParams()
 TRAIN_PARAMS = global_params.GlobalTrainParams()
 WANDB_PARAMS = global_params.WandbParams()
+LOGS_PARAMS = global_params.LogsParams()
 
 device = config.DEVICE
+
+main_logger = config.init_logger(
+    log_file=Path.joinpath(LOGS_PARAMS.LOGS_DIR_RUN_ID, "main.log"),
+    module_name="main",
+)
 
 
 # Typer CLI app
@@ -63,7 +66,7 @@ def download_data():
     # datasets.MNIST(root=config.DATA_DIR.absolute(), train=False, download=True)
     # Save data
 
-    config.logger.info("Data downloaded!")
+    main_logger.info("Data downloaded!")
 
 
 def wandb_init(fold: int):
@@ -290,8 +293,8 @@ def train_loop(*args, **kwargs):
         # print("\n\n\nOOF Score for Fold {}: {}\n\n\n".format(fold, curr_fold_best_score))
 
     cv_mean_d, cv_std_d = metrics.calculate_cv_metrics(df_oof)
-    config.logger.info(f"\n\n\nMEAN CV: {cv_mean_d}\n\n\n")
-    config.logger.info(f"\n\n\nSTD CV: {cv_std_d}\n\n\n")
+    main_logger.info(f"\n\n\nMEAN CV: {cv_mean_d}\n\n\n")
+    main_logger.info(f"\n\n\nSTD CV: {cv_std_d}\n\n\n")
 
     # print("Five Folds OOF", get_oof_roc(config, oof_df))
 
