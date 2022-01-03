@@ -41,7 +41,7 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 32,
+            "batch_size": 8,
             "num_workers": 2,
             "pin_memory": False,
             "drop_last": True,
@@ -51,7 +51,7 @@ class DataLoaderParams:
     )
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 32,
+            "batch_size": 8,
             "num_workers": 2,
             "pin_memory": False,
             "drop_last": False,
@@ -108,8 +108,8 @@ class MakeFolds:
     folds_csv (str): path to the folds csv.
     """
 
-    seed: int = 2021
-    num_folds: int = 5
+    seed: int = 2999
+    num_folds: int = 7
     cv_schema: str = "StratifiedKFold"
     class_col_name: str = "Pawpularity"
     image_col_name: str = "Id"
@@ -175,7 +175,7 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "swin_tiny_patch4_window7_224"  # Debug
+    model_name: str = "swin_large_patch4_window7_224"  # Debug
     pretrained: bool = True
     input_channels: int = 3
     output_dimension: int = 1
@@ -227,7 +227,7 @@ class OptimizerParams:
     optimizer_name: str = "AdamW"
     optimizer_params: Dict[str, Any] = field(
         default_factory=lambda: {
-            "lr": 1e-5,
+            "lr": 6e-6,
             "betas": (0.9, 0.999),
             "amsgrad": False,
             "weight_decay": 0.01,
