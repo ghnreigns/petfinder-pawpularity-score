@@ -41,7 +41,7 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 8,
+            "batch_size": 2,
             "num_workers": 2,
             "pin_memory": False,
             "drop_last": True,
@@ -51,7 +51,7 @@ class DataLoaderParams:
     )
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 8,
+            "batch_size": 4,
             "num_workers": 2,
             "pin_memory": False,
             "drop_last": False,
@@ -129,7 +129,7 @@ class AugmentationParams:
 
     mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
     std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
-    image_size: int = 224
+    image_size: int = 384
     mixup: bool = False
     mixup_params: Dict[str, Any] = field(
         default_factory=lambda: {"mixup_alpha": 0.5, "use_cuda": True}
@@ -175,7 +175,7 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "swin_large_patch4_window7_224"  # Debug
+    model_name: str = "swin_large_patch4_window12_384"  # Debug
     pretrained: bool = True
     input_channels: int = 3
     output_dimension: int = 1
@@ -209,6 +209,12 @@ class GlobalTrainParams:
     model_name: str = ModelParams().model_name
     num_classes: int = ModelParams().output_dimension
     classification_type: str = ModelParams().classification_type
+    grad_accumulation_params: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "use_grad_accu": True,
+            "iters_to_accumulate": 4,
+        }
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

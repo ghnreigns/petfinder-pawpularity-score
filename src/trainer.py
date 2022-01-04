@@ -515,7 +515,7 @@ class Trainer:
 
             batch_size = inputs.shape[0]
             if self.params.use_amp:
-                self.optimizer.zero_grad()
+                # self.optimizer.zero_grad()
                 with torch.cuda.amp.autocast(
                     enabled=True, dtype=torch.float16, cache_enabled=True
                 ):
@@ -526,9 +526,18 @@ class Trainer:
                         batch_size,
                         criterion_params=CRITERION_PARAMS,
                     )
+                    curr_batch_train_loss /= (
+                        self.params.grad_accumulation_params[
+                            "iters_to_accumulate"
+                        ]
+                    )
                 self.scaler.scale(curr_batch_train_loss).backward()
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+                if (step + 1) % self.params.grad_accumulation_params[
+                    "iters_to_accumulate"
+                ] == 0:
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                    self.optimizer.zero_grad()
             else:
                 logits = self.model(inputs)  # Forward pass logits
                 self.optimizer.zero_grad()  # reset gradients
