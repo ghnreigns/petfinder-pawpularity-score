@@ -41,8 +41,8 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 2,
-            "num_workers": 2,
+            "batch_size": 8,
+            "num_workers": 0,
             "pin_memory": False,
             "drop_last": True,
             "shuffle": True,
@@ -51,8 +51,8 @@ class DataLoaderParams:
     )
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 4,
-            "num_workers": 2,
+            "batch_size": 8,
+            "num_workers": 0,
             "pin_memory": False,
             "drop_last": False,
             "shuffle": False,
@@ -129,7 +129,7 @@ class AugmentationParams:
 
     mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
     std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
-    image_size: int = 384
+    image_size: int = 224
     mixup: bool = False
     mixup_params: Dict[str, Any] = field(
         default_factory=lambda: {"mixup_alpha": 0.5, "use_cuda": True}
@@ -161,6 +161,10 @@ class CriterionParams:
         }
     )
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary."""
+        return asdict(self)
+
 
 @dataclass
 class ModelParams:
@@ -175,7 +179,7 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "swin_large_patch4_window12_384"  # Debug
+    model_name: str = "swin_large_patch4_window7_224"  # Debug
     pretrained: bool = True
     input_channels: int = 3
     output_dimension: int = 1
@@ -200,7 +204,7 @@ class ModelParams:
 
 @dataclass
 class GlobalTrainParams:
-    debug: bool = False
+    debug: bool = True
     debug_multipler: int = 16
     epochs: int = 20  # 1 or 2 when debug
     use_amp: bool = True
@@ -209,12 +213,6 @@ class GlobalTrainParams:
     model_name: str = ModelParams().model_name
     num_classes: int = ModelParams().output_dimension
     classification_type: str = ModelParams().classification_type
-    grad_accumulation_params: Dict[str, Any] = field(
-        default_factory=lambda: {
-            "use_grad_accu": True,
-            "iters_to_accumulate": 4,
-        }
-    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

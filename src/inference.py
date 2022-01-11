@@ -9,7 +9,7 @@ import torch
 from config import config, global_params
 from tqdm.auto import tqdm
 
-from src import dataset, models, transformation
+from src import dataset, models, transformation, trainer
 
 MODEL = global_params.ModelParams()
 FOLDS = global_params.MakeFolds()
@@ -51,7 +51,7 @@ def inference_all_folds(
                 images = data["X"].to(device, non_blocking=True)
                 logits = model(images)
                 test_prob = (
-                    torch.nn.Softmax(dim=1)(input=logits).to("cpu").numpy()
+                    trainer.Trainer.get_sigmoid_softmax()(logits).cpu().numpy()
                 )
 
                 current_fold_preds.append(test_prob)

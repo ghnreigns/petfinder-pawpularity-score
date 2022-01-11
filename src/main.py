@@ -84,6 +84,13 @@ def wandb_init(fold: int):
         "Train_Params": TRAIN_PARAMS.to_dict(),
         "Model_Params": MODEL_PARAMS.to_dict(),
         "Loader_Params": LOADER_PARAMS.to_dict(),
+        "File_Params": FILES.to_dict(),
+        "Wandb_Params": WANDB_PARAMS.to_dict(),
+        "Folds_Params": FOLDS.to_dict(),
+        "Augment_Params": global_params.AugmentationParams().to_dict(),
+        "Criterion_Params": global_params.CriterionParams().to_dict(),
+        "Scheduler_Params": global_params.SchedulerParams().to_dict(),
+        "Optimizer_Params": global_params.OptimizerParams().to_dict(),
     }
 
     wandb_run = wandb.init(
@@ -129,6 +136,7 @@ def log_gradcam(curr_fold_best_checkpoint, df_oof, plot_gradcam: bool = True):
     elif "swin" in MODEL_PARAMS.model_name:
         # https://github.com/jacobgil/pytorch-grad-cam/blob/master/usage_examples/swinT_example.py
         def reshape_transform(tensor, height=7, width=7):
+            # height, width 12 for swin 384
             result = tensor.reshape(
                 tensor.size(0), height, width, tensor.size(2)
             )
@@ -138,7 +146,7 @@ def log_gradcam(curr_fold_best_checkpoint, df_oof, plot_gradcam: bool = True):
             result = result.permute(0, 3, 1, 2)
             return result
 
-        target_layers = [model.backbone.layers[-1].blocks[-1].norm2]
+        target_layers = [model.backbone.layers[-1].blocks[-1].norm1]
 
     # load gradcam_dataset
     gradcam_dataset = dataset.CustomDataset(
@@ -218,7 +226,7 @@ def train_one_fold(
     train_loader, valid_loader, df_oof = prepare.prepare_loaders(df_folds, fold)
 
     if is_plot:
-        image_grid = plot.show_image(
+        _image_grid = plot.show_image(
             loader=train_loader,
             nrows=1,
             ncols=1,
