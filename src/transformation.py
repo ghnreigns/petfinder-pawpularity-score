@@ -9,6 +9,7 @@ from config import global_params
 TRANSFORMS = global_params.AugmentationParams()
 
 
+# For image size > 448
 def get_train_transforms(image_size: int = TRANSFORMS.image_size):
     """Performs Augmentation on training data.
 
@@ -18,8 +19,16 @@ def get_train_transforms(image_size: int = TRANSFORMS.image_size):
     Returns:
         [type]: [description]
     """
+
     return albumentations.Compose(
-        [  # albumentations.RandomResizedCrop(height=image_size, width=image_size),
+        [
+            albumentations.RandomResizedCrop(
+                height=image_size,
+                width=image_size,
+                scale=(0.8, 1.0),
+                ratio=(0.9, 1.1),
+                p=1.0,
+            ),
             albumentations.HorizontalFlip(p=0.5),
             albumentations.VerticalFlip(p=0.1),
             albumentations.Rotate(limit=180, p=0.5),
@@ -35,7 +44,6 @@ def get_train_transforms(image_size: int = TRANSFORMS.image_size):
             albumentations.RandomBrightnessContrast(
                 brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5
             ),
-            albumentations.Resize(image_size, image_size),
             albumentations.Normalize(
                 mean=TRANSFORMS.mean,
                 std=TRANSFORMS.std,

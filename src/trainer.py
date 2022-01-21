@@ -530,6 +530,7 @@ class Trainer:
                 self.scaler.scale(curr_batch_train_loss).backward()
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
+            ## UNCOMMENT FOR GRAD ACCUM
             # if self.params.use_amp:
             #     # self.optimizer.zero_grad()
             #     with torch.cuda.amp.autocast(

@@ -42,7 +42,7 @@ class DataLoaderParams:
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
             "batch_size": 8,
-            "num_workers": 0,
+            "num_workers": 2,
             "pin_memory": False,
             "drop_last": True,
             "shuffle": True,
@@ -52,7 +52,7 @@ class DataLoaderParams:
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
             "batch_size": 8,
-            "num_workers": 0,
+            "num_workers": 2,
             "pin_memory": False,
             "drop_last": False,
             "shuffle": False,
@@ -204,7 +204,7 @@ class ModelParams:
 
 @dataclass
 class GlobalTrainParams:
-    debug: bool = True
+    debug: bool = False
     debug_multipler: int = 16
     epochs: int = 20  # 1 or 2 when debug
     use_amp: bool = True
@@ -213,6 +213,7 @@ class GlobalTrainParams:
     model_name: str = ModelParams().model_name
     num_classes: int = ModelParams().output_dimension
     classification_type: str = ModelParams().classification_type
+    freeze_bn: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

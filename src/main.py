@@ -237,6 +237,9 @@ def train_one_fold(
 
     # Model, cost function and optimizer instancing
     model = models.CustomNeuralNet().to(device)
+    if TRAIN_PARAMS.freeze_bn:
+        main_logger.info(f"Freezing {model.__class__.__name__}!")
+        model.apply(models.freeze_batchnorm_layers)
 
     if is_forward_pass:
         # Forward Sanity Check

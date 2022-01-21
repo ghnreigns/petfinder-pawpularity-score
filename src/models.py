@@ -41,7 +41,9 @@ class CustomNeuralNet(torch.nn.Module):
         self.pretrained = pretrained
 
         self.backbone = timm.create_model(
-            model_name, pretrained=self.pretrained, in_chans=self.in_channels
+            model_name,
+            pretrained=self.pretrained,
+            in_chans=self.in_channels,
         )
         models_logger.info(
             f"\nModel: {model_name}\nPretrained: {pretrained}\nIn Channels: {in_channels}\n"
@@ -179,3 +181,54 @@ def forward_pass(
 
     utils.free_gpu_memory(model, X, y)
     return X, y
+
+
+def get_conv_layers(model) -> Dict[str, str]:
+    """Create a function that give me the conv layers of PyTorch model.
+
+    Args:
+        model (Union[torchvision.models, timm.models]): A PyTorch model.
+
+    Returns:
+        conv_layers (Dict[str, str]): {"layer1.0.conv1": layer1.0.conv1, ...}
+    """
+    conv_layers = {}
+    for name, layer in model.named_modules():
+        if isinstance(layer, torch.nn.Conv2d):
+            conv_layers[name] = name
+    return conv_layers
+
+
+def freeze_batchnorm_layers(model: CustomNeuralNet) -> None:
+    """Freeze the batchnorm layers of a PyTorch model.
+
+    Args:
+        model (CustomNeuralNet): model to be frozen.
+
+    Example:
+        >>> model = timm.create_model("efficientnet_b0", pretrained=True)
+        >>> model.apply(freeze_batchnorm_layers) # to freeze during training
+    """
+    # https://discuss.pytorch.org/t/how-to-freeze-bn-layers-while-training-the-rest-of-network-mean-and-var-wont-freeze/89736/19
+    # https://discuss.pytorch.org/t/should-i-use-model-eval-when-i-freeze-batchnorm-layers-to-finetune/39495/3
+    classname = model.__class__.__name__
+
+    for module in model.modules():
+        if isinstance(module, torch.nn.BatchNorm2d):
+            if hasattr(module, "weight"):
+                module.weight.requires_grad_(False)
+            if hasattr(module, "bias"):
+                module.bias.requires_grad_(False)
+            module.eval()
+
+
+def divice_norm_bias(model):
+    norm_bias_params = []
+    non_norm_bias_params = []
+    except_wd_layers = ["norm", ".bias"]
+    for n, p in model.model.named_parameters():
+        if any([nd in n for nd in except_wd_layers]):
+            norm_bias_params.append(p)
+        else:
+            non_norm_bias_params.append(p)
+    return norm_bias_params, non_norm_bias_params
