@@ -306,9 +306,9 @@ def train_loop(*args, **kwargs):
     df_oof = pd.DataFrame()
 
     for fold in range(1, FOLDS.num_folds + 1):
-        if fold in [5, 6, 7]:
-            _df_oof = train_one_fold(*args, fold=fold, **kwargs)
-            df_oof = pd.concat([df_oof, _df_oof])
+
+        _df_oof = train_one_fold(*args, fold=fold, **kwargs)
+        df_oof = pd.concat([df_oof, _df_oof])
 
         # TODO: populate the cv_score_list using a dataframe like breast cancer project.
         # curr_fold_best_score_dict, curr_fold_best_score = get_oof_roc(config, _oof_df)

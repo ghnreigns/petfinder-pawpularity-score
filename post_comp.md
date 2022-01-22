@@ -55,7 +55,7 @@ class DataLoaderParams:
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
             "batch_size": 8,
-            "num_workers": 2,
+            "num_workers": 0,
             "pin_memory": False,
             "drop_last": True,
             "shuffle": True,
@@ -65,7 +65,7 @@ class DataLoaderParams:
     valid_loader: Dict[str, Any] = field(
         default_factory=lambda: {
             "batch_size": 8,
-            "num_workers": 2,
+            "num_workers": 0,
             "pin_memory": False,
             "drop_last": False,
             "shuffle": False,
@@ -208,14 +208,14 @@ def mixup_criterion(
     """Implements mixup criterion.
 
     Args:
-        criterion (Union[torch.nn.BCEWithLogitsLoss, torch.nn.CrossEntropyLoss]): [description]
-        logits (torch.Tensor): [description]
-        y_a (torch.Tensor): [description]
-        y_b (torch.Tensor): [description]
-        lambda_ (float): [description]
+        criterion (Union[torch.nn.BCEWithLogitsLoss, torch.nn.CrossEntropyLoss]): The loss function.
+        logits (torch.Tensor): The logits tensor.
+        y_a (torch.Tensor): The target of image a.
+        y_b (torch.Tensor): The target of image b.
+        lambda_ (float): The lambda value from mixup.
 
     Returns:
-        torch.Tensor: [description]
+        torch.Tensor: The mixed criterion (loss).
     """
     return lambda_ * criterion(logits, y_a) + (1 - lambda_) * criterion(
         logits, y_b

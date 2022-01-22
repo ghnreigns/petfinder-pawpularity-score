@@ -118,7 +118,7 @@ class MakeFolds:
     """
 
     seed: int = 2999
-    num_folds: int = 7
+    num_folds: int = 10
     cv_schema: str = "StratifiedKFold"
     class_col_name: str = "Pawpularity"
     image_col_name: str = "Id"
@@ -141,7 +141,7 @@ class AugmentationParams:
     image_size: int = 224
     mixup: bool = True
     mixup_params: Dict[str, Any] = field(
-        default_factory=lambda: {"mixup_alpha": 0.3, "use_cuda": True}
+        default_factory=lambda: {"mixup_alpha": 0.2, "use_cuda": True}
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -218,7 +218,7 @@ class GlobalTrainParams:
     epochs: int = 20  # 1 or 2 when debug
     use_amp: bool = True
     mixup: bool = AugmentationParams().mixup
-    patience: int = 2
+    patience: int = 6
     model_name: str = ModelParams().model_name
     num_classes: int = ModelParams().output_dimension
     classification_type: str = ModelParams().classification_type
@@ -242,7 +242,7 @@ class OptimizerParams:
     optimizer_name: str = "AdamW"
     optimizer_params: Dict[str, Any] = field(
         default_factory=lambda: {
-            "lr": 6e-6,
+            "lr": 3e-6,
             "betas": (0.9, 0.999),
             "amsgrad": False,
             "weight_decay": 0.01,
@@ -274,10 +274,10 @@ class SchedulerParams:
     elif scheduler_name == "OneCycleLR":
         scheduler_params: Dict[str, Any] = field(
             default_factory=lambda: {
-                "max_lr": 3e-5,
+                "max_lr": 2e-5,
                 "steps_per_epoch": DataLoaderParams().get_len_train_loader(),
                 "epochs": GlobalTrainParams().epochs,
-                "pct_start": 0.3,
+                "pct_start": 0.25,
                 "anneal_strategy": "cos",
                 "div_factor": 25,  # default is 25
                 "three_phase": False,
