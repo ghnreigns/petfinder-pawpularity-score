@@ -222,11 +222,11 @@ def freeze_batchnorm_layers(model: CustomNeuralNet) -> None:
             module.eval()
 
 
-def divice_norm_bias(model):
+def divide_norm_bias(model):
     norm_bias_params = []
     non_norm_bias_params = []
     except_wd_layers = ["norm", ".bias"]
-    for n, p in model.model.named_parameters():
+    for n, p in model.backbone.named_parameters():
         if any([nd in n for nd in except_wd_layers]):
             norm_bias_params.append(p)
         else:

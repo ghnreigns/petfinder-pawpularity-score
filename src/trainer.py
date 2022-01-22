@@ -9,12 +9,13 @@ import shutil
 
 from tqdm.auto import tqdm
 import os
-from src import callbacks, metrics, models, utils
+from src import callbacks, metrics, models, utils, transformation
 
 FILES = global_params.FilePaths()
 CRITERION_PARAMS = global_params.CriterionParams()
 SCHEDULER_PARAMS = global_params.SchedulerParams()
 OPTIMIZER_PARAMS = global_params.OptimizerParams()
+TRANSFORMS = global_params.AugmentationParams()
 LOGS_PARAMS = global_params.LogsParams()
 
 training_logger = config.init_logger(
@@ -46,9 +47,12 @@ class Trainer:
         self.early_stopping = early_stopping
 
         # TODO: To ask Ian if initializing the optimizer in constructor is a good idea? Should we init it outside of the class like most people do? In particular, the memory usage.
-        self.optimizer = self.get_optimizer(
-            model=self.model, optimizer_params=OPTIMIZER_PARAMS
-        )
+        if params.divide_norm_bias:
+            self.optimizer = self.get_divide_norm_optimizer()
+        else:
+            self.optimizer = self.get_optimizer(
+                model=self.model, optimizer_params=OPTIMIZER_PARAMS
+            )
         self.scheduler = self.get_scheduler(
             optimizer=self.optimizer, scheduler_params=SCHEDULER_PARAMS
         )
@@ -99,9 +103,43 @@ class Trainer:
         Returns:
             [type]: [description]
         """
+
         return getattr(torch.optim, optimizer_params.optimizer_name)(
             model.parameters(), **optimizer_params.optimizer_params
         )
+
+    def get_divide_norm_optimizer(self):
+        """Get the optimizer for the model using fastai method.
+
+        Returns:
+            [type]: [description]
+        """
+        norm_bias_params, non_norm_bias_params = models.divide_norm_bias(
+            self.model
+        )
+        opt_wd_non_norm_bias = 0.01
+        opt_wd_norm_bias = 0
+        opt_beta1 = 0.9
+        opt_beta2 = 0.99
+        opt_eps = 1e-5
+
+        optimizer = torch.optim.AdamW(
+            [
+                {
+                    "params": norm_bias_params,
+                    "weight_decay": opt_wd_norm_bias,
+                },
+                {
+                    "params": non_norm_bias_params,
+                    "weight_decay": opt_wd_non_norm_bias,
+                },
+            ],
+            betas=(opt_beta1, opt_beta2),
+            eps=opt_eps,
+            lr=6e-6,
+            amsgrad=False,
+        )
+        return optimizer
 
     @staticmethod
     def get_scheduler(
@@ -368,8 +406,7 @@ class Trainer:
             ########################## Start of Model Saving ############################
             # TODO: Consider condensing early stopping and model saving as callbacks, it looks very long and ugly here.
 
-            # User has to choose a few metrics to monitor.
-            # Here I chose valid_loss and valid_macro_auroc.
+            # User has to choose a few metrics to monitor. Here I chose valid_loss and valid_rmse.
             self.monitored_metric["metric_score"] = torch.clone(valid_rmse)
 
             if self.early_stopping is not None:
@@ -415,7 +452,6 @@ class Trainer:
                         ]
                         # Reset patience counter as we found a new best score
                         patience_counter_ = self.patience_counter
-                        # TODO: Overwrite model saving whenever a better score is found. Currently this part is clumsy because we need to shift it to the else clause if we are monitoring min metrics. Do you think it is a good idea to put this chunk in save_model_artifacts instead?
 
                         saved_model_path = Path(
                             self.model_path,
@@ -428,9 +464,7 @@ class Trainer:
                             valid_preds,
                             valid_probs,
                         )
-                        #  model_path = Path(wandb.run.dir, "model.pt").absolute().__str__()
-                        # self.wandb_run.save(saved_model_path.__str__())
-                        # TODO: Temporary workaround for Windows to save wandb files by copying to the local directory which will auto sync later. https://github.com/wandb/client/issues/1370
+
                         shutil.copy(
                             saved_model_path.__str__(),
                             os.path.join(
@@ -504,29 +538,54 @@ class Trainer:
         train_bar = tqdm(train_loader)
 
         # Iterate over train batches
+        # TODO: Consider rename data to batch for names consistency.
         for step, data in enumerate(train_bar, start=1):
-            # TODO: Consider rename data to batch for names consistency.
-            if self.params.mixup:
-                # TODO: Implement MIXUP logic. Refer here: https://www.kaggle.com/ar2017/pytorch-efficientnet-train-aug-cutmix-fmix and my https://colab.research.google.com/drive/1sYkKG8O17QFplGMGXTLwIrGKjrgxpRt5#scrollTo=5y4PfmGZubYp
-                pass
 
-            # unpack - note that if BCEWithLogitsLoss, dataset should do view(-1,1) and not here.
-            inputs = data["X"].to(self.device, non_blocking=True)
-            targets = data["y"].to(self.device, non_blocking=True)
+            is_mixup = np.random.randint(1, 10) >= 5
+            # TODO: Implement MIXUP logic. Refer here: https://www.kaggle.com/ar2017/pytorch-efficientnet-train-aug-cutmix-fmix and my https://colab.research.google.com/drive/1sYkKG8O17QFplGMGXTLwIrGKjrgxpRt5#scrollTo=5y4PfmGZubYp
+            if self.params.mixup and is_mixup:
+                inputs = data["X"].to(self.device, non_blocking=True)
+                targets = data["y"].to(self.device, non_blocking=True)
+                (
+                    inputs,
+                    targets_a,
+                    targets_b,
+                    lam,
+                ) = transformation.mixup_data(
+                    inputs, targets, params=TRANSFORMS.mixup_params
+                )
+                inputs, targets_a, targets_b = (
+                    inputs.to(self.device, non_blocking=True),
+                    targets_a.to(self.device, non_blocking=True),
+                    targets_b.to(self.device, non_blocking=True),
+                )
+            else:
+                # unpack and .view(-1, 1) if BCELoss
+                inputs = data["X"].to(self.device, non_blocking=True)
+                targets = data["y"].to(self.device, non_blocking=True)
 
-            batch_size = inputs.shape[0]
             if self.params.use_amp:
                 self.optimizer.zero_grad()
                 with torch.cuda.amp.autocast(
                     enabled=True, dtype=torch.float16, cache_enabled=True
                 ):
                     logits = self.model(inputs)  # Forward pass logits
-                    curr_batch_train_loss = self.train_criterion(
-                        targets,
-                        logits,
-                        batch_size,
-                        criterion_params=CRITERION_PARAMS,
-                    )
+                    batch_size = inputs.shape[0]
+                    if self.params.mixup and is_mixup:
+                        curr_batch_train_loss = transformation.mixup_criterion(
+                            torch.nn.BCEWithLogitsLoss(),
+                            logits,
+                            targets_a,
+                            targets_b,
+                            lam,
+                        )
+                    else:
+                        curr_batch_train_loss = self.train_criterion(
+                            targets,
+                            logits,
+                            batch_size,
+                            criterion_params=CRITERION_PARAMS,
+                        )
                 self.scaler.scale(curr_batch_train_loss).backward()
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
@@ -558,12 +617,22 @@ class Trainer:
             else:
                 logits = self.model(inputs)  # Forward pass logits
                 self.optimizer.zero_grad()  # reset gradients
-                curr_batch_train_loss = self.train_criterion(
-                    targets,
-                    logits,
-                    batch_size,
-                    criterion_params=CRITERION_PARAMS,
-                )
+                if self.params.mixup and is_mixup:
+                    curr_batch_train_loss = transformation.mixup_criterion(
+                        torch.nn.BCEWithLogitsLoss(),
+                        logits,
+                        targets_a,
+                        targets_b,
+                        lam,
+                    )
+                else:
+                    curr_batch_train_loss = self.train_criterion(
+                        targets,
+                        logits,
+                        batch_size,
+                        criterion_params=CRITERION_PARAMS,
+                    )
+
                 curr_batch_train_loss.backward()  # Backward pass
                 self.optimizer.step()  # Update weights using the optimizer
 
@@ -571,10 +640,6 @@ class Trainer:
             metric_monitor.update("Loss", curr_batch_train_loss.item())
             train_bar.set_description(f"Train. {metric_monitor}")
 
-            # Cumulative Loss
-            # Batch/Step 1: curr_batch_train_loss = 10 -> average_cumulative_train_loss = (10-0)/1 = 10
-            # Batch/Step 2: curr_batch_train_loss = 12 -> average_cumulative_train_loss = 10 + (12-10)/2 = 11 (Basically (10+12)/2=11)
-            # Essentially, average_cumulative_train_loss = loss over all batches / batches
             average_cumulative_train_loss += (
                 curr_batch_train_loss.detach().item()
                 - average_cumulative_train_loss
@@ -640,19 +705,11 @@ class Trainer:
                     curr_batch_val_loss.item() - average_cumulative_valid_loss
                 ) / (step)
 
-                # For OOF score and other computation.
-                # TODO: Consider giving numerical example. Consider rolling back to targets.cpu().numpy() if torch fails.
                 valid_trues.extend(targets.cpu())
                 valid_logits.extend(logits.cpu())
                 valid_preds.extend(y_valid_pred.cpu())
                 valid_probs.extend(y_valid_prob.cpu())
 
-                # TODO: To make this look like what we did in breast cancer project.
-
-        # We should work with numpy arrays.
-        # vstack here to stack the list of numpy arrays.
-        # a = [np.asarray([1,2,3]), np.asarray([4,5,6])]
-        # np.vstack(a) -> array([[1, 2, 3], [4, 5, 6]])
         valid_trues, valid_logits, valid_preds, valid_probs = (
             torch.vstack(valid_trues),
             torch.vstack(valid_logits),
@@ -699,7 +756,6 @@ class Trainer:
             global_step=step,
         )
 
-    # TODO: Consider unpacking the dict returned by valid_one_epoch instead of passing in as arguments.
     def save_model_artifacts(
         self,
         path: str,

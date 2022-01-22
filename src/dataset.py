@@ -69,12 +69,6 @@ class CustomDataset(torch.utils.data.Dataset):
             original_image  (torch.Tensor): Original image tensor.
         """
 
-        # Changing the shape of y tensor here is problematic, the dataloader somehow will turn a shape of [batch_size, 1] into [batch_size, 1, 1]
-        # By definition of collate function in DataLoader, it is mentioned in documentation that it prepends an extra dimension to the tensor as batch_size. Thus,
-        # if the input y is a tensor of shape [1,], then .view(-1, 1) will change the shape to [1, 1], and when we collate using DataLoader, say with batch_size = 4,
-        # then the collated y will be a tensor of shape [4, 1, 1] instead of [4, 1] since it prepends an extra dimension.
-        # TODO: Check on RANZCR to see if flatten here works since that is multi-label.
-
         if CRITERION_PARAMS.train_criterion_name == "BCEWithLogitsLoss":
             # Make changes to reshape rather than in Trainer.
             y = torch.as_tensor(y, dtype=torch.float32).flatten()

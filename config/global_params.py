@@ -29,6 +29,15 @@ class FilePaths:
     global_params_path: pathlib.Path = pathlib.Path(
         config.CONFIG_DIR, "global_params.py"
     )
+    transformation_path: pathlib.Path = pathlib.Path(
+        config.BASE_DIR, "src/transformation.py"
+    )
+    dataset_path: pathlib.Path = pathlib.Path(config.BASE_DIR, "src/dataset.py")
+    trainer_path: pathlib.Path = pathlib.Path(config.BASE_DIR, "src/trainer.py")
+    models_path: pathlib.Path = pathlib.Path(config.BASE_DIR, "src/models.py")
+    make_folds_path: pathlib.Path = pathlib.Path(
+        config.BASE_DIR, "src/make_folds.py"
+    )
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -130,9 +139,9 @@ class AugmentationParams:
     mean: List[float] = field(default_factory=lambda: [0.485, 0.456, 0.406])
     std: List[float] = field(default_factory=lambda: [0.229, 0.224, 0.225])
     image_size: int = 224
-    mixup: bool = False
+    mixup: bool = True
     mixup_params: Dict[str, Any] = field(
-        default_factory=lambda: {"mixup_alpha": 0.5, "use_cuda": True}
+        default_factory=lambda: {"mixup_alpha": 0.3, "use_cuda": True}
     )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -214,6 +223,7 @@ class GlobalTrainParams:
     num_classes: int = ModelParams().output_dimension
     classification_type: str = ModelParams().classification_type
     freeze_bn: bool = False
+    divide_norm_bias: bool = True
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""

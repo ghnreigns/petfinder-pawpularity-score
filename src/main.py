@@ -55,6 +55,12 @@ main_logger = config.init_logger(
 )
 
 shutil.copy(FILES.global_params_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+shutil.copy(FILES.dataset_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+shutil.copy(FILES.trainer_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+shutil.copy(FILES.models_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+shutil.copy(FILES.transformation_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+shutil.copy(FILES.make_folds_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
+
 
 # Typer CLI app
 app = typer.Typer()
@@ -280,8 +286,11 @@ def train_one_fold(
             df_oof=df_oof,
             plot_gradcam=False,
         )
-
-        wandb_run.log({"gradcam_table": gradcam_table})
+        try:
+            wandb_run.log({"gradcam_table": gradcam_table})
+        except Exception as e:
+            print(e)
+            pass
         utils.free_gpu_memory(gradcam_table)
 
     utils.free_gpu_memory(model)
@@ -297,8 +306,9 @@ def train_loop(*args, **kwargs):
     df_oof = pd.DataFrame()
 
     for fold in range(1, FOLDS.num_folds + 1):
-        _df_oof = train_one_fold(*args, fold=fold, **kwargs)
-        df_oof = pd.concat([df_oof, _df_oof])
+        if fold in [5, 6, 7]:
+            _df_oof = train_one_fold(*args, fold=fold, **kwargs)
+            df_oof = pd.concat([df_oof, _df_oof])
 
         # TODO: populate the cv_score_list using a dataframe like breast cancer project.
         # curr_fold_best_score_dict, curr_fold_best_score = get_oof_roc(config, _oof_df)
@@ -324,7 +334,10 @@ if __name__ == "__main__":
     is_inference = False
     if not is_inference:
         df_oof = train_loop(
-            df_folds=df_folds, is_plot=False, is_forward_pass=True
+            df_folds=df_folds,
+            is_plot=False,
+            is_forward_pass=True,
+            is_gradcam=False,
         )
 
     # model_dir = Path(FILES.weight_path, MODEL_PARAMS.model_name).__str__()
