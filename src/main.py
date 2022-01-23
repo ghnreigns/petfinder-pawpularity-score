@@ -17,7 +17,6 @@ import pandas as pd
 import torch
 
 import typer
-from sklearn import metrics
 
 from src import (
     plot,
@@ -46,7 +45,7 @@ LOADER_PARAMS = global_params.DataLoaderParams()
 TRAIN_PARAMS = global_params.GlobalTrainParams()
 WANDB_PARAMS = global_params.WandbParams()
 LOGS_PARAMS = global_params.LogsParams()
-
+MODEL_ARTIFACTS_PATH = global_params.FilePaths().get_model_artifacts_path()
 device = config.DEVICE
 
 main_logger = config.init_logger(
@@ -60,21 +59,6 @@ shutil.copy(FILES.trainer_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
 shutil.copy(FILES.models_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
 shutil.copy(FILES.transformation_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
 shutil.copy(FILES.make_folds_path, LOGS_PARAMS.LOGS_DIR_RUN_ID)
-
-
-# Typer CLI app
-app = typer.Typer()
-
-
-@app.command()
-def download_data():
-    """Load data from URL and save to local drive."""
-    # Download data, pre-caching.
-    # datasets.MNIST(root=config.DATA_DIR.absolute(), train=True, download=True)
-    # datasets.MNIST(root=config.DATA_DIR.absolute(), train=False, download=True)
-    # Save data
-
-    main_logger.info("Data downloaded!")
 
 
 def wandb_init(fold: int):
@@ -278,7 +262,9 @@ def train_one_fold(
     df_oof["oof_trues"] = curr_fold_best_checkpoint["oof_trues"]
     df_oof["oof_preds"] = curr_fold_best_checkpoint["oof_preds"]
 
-    df_oof.to_csv(Path(FILES.oof_csv, f"oof_fold_{fold}.csv"), index=False)
+    df_oof.to_csv(
+        Path(MODEL_ARTIFACTS_PATH, f"oof_fold_{fold}.csv"), index=False
+    )
     if is_gradcam:
         # TODO: df_oof['error_analysis'] = todo - error analysis by ranking prediction confidence and plot gradcam for top 10 and bottom 10.
         gradcam_table = log_gradcam(
@@ -310,17 +296,7 @@ def train_loop(*args, **kwargs):
         _df_oof = train_one_fold(*args, fold=fold, **kwargs)
         df_oof = pd.concat([df_oof, _df_oof])
 
-        # TODO: populate the cv_score_list using a dataframe like breast cancer project.
-        # curr_fold_best_score_dict, curr_fold_best_score = get_oof_roc(config, _oof_df)
-        # cv_score_list.append(curr_fold_best_score)
-        # print("\n\n\nOOF Score for Fold {}: {}\n\n\n".format(fold, curr_fold_best_score))
-
-    # cv_mean_d, cv_std_d = metrics.calculate_cv_metrics(df_oof)
-    # main_logger.info(f"\n\n\nMEAN CV: {cv_mean_d}\n\n\nSTD CV: {cv_std_d}")
-
-    # print("Five Folds OOF", get_oof_roc(config, oof_df))
-
-    df_oof.to_csv(Path(FILES.oof_csv, "oof.csv"), index=False)
+    df_oof.to_csv(Path(MODEL_ARTIFACTS_PATH, "oof.csv"), index=False)
 
     return df_oof
 
@@ -340,8 +316,32 @@ if __name__ == "__main__":
             is_gradcam=False,
         )
 
-    # model_dir = Path(FILES.weight_path, MODEL_PARAMS.model_name).__str__()
     else:
-        model_dir = r"C:\Users\reighns\kaggle_projects\cassava\model\tf_efficientnet_b0_ns"
-        predictions = inference.inference(df_test, model_dir, df_sub)
+        # TODO: model_dir is defined hardcoded, consider be able to pull the exact path from the saved logs/models from wandb even?
+
+        model_dir = Path(
+            r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_3lcg145y"
+        )
+
+        weights = utils.return_list_of_files(
+            directory=model_dir, return_string=True, extension=".pt"
+        )
+        model = models.CustomNeuralNet(
+            model_name="swin_large_patch4_window7_224",
+            out_features=1,
+            in_channels=3,
+            pretrained=False,
+        ).to(device)
+
+        inference.compute_rmse_oof(model_dir)
+        transform_dict = transformation.get_inference_transforms()
+        predictions = inference.inference(
+            df_test=df_test,
+            model_dir=model_dir,
+            model=model,
+            df_sub=df_test,
+            transform_dict=transform_dict,
+        )
+        # TODO: Note that I printed out predictions with notebook CASSAVA: tf_efficientnet_b4_ns_5_folds_9au8inn1 and both get same preds.
+        # TODO: add gradcam support for inference.
         # _ = inference.show_gradcam()

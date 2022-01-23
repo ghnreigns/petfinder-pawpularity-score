@@ -11,6 +11,7 @@
 - https://www.kaggle.com/ytakayama/train-pytorch-swin-5fold-some-tips and https://www.kaggle.com/ytakayama/inference-pytorch-swin-5fold-notta seems good, even chris follows.
 - Use Sturge
 
+
 ## Additional
 
 - models.freeze_batchnorm_layers
@@ -20,6 +21,7 @@
 - make_folds.sturge
 - Added doc string for mixup: also do up a notebook for mixup to visualize and work out the math.
 - Add model params in ModelParams. Do in Cassava too.
+- talk bout lr finder?
 
 ## Experiment 1
 

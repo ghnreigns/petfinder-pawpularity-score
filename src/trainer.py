@@ -235,49 +235,6 @@ class Trainer:
         if CRITERION_PARAMS.train_criterion_name == "CrossEntropyLoss":
             return getattr(torch.nn, "Softmax")(dim=1)
 
-    def get_classification_metrics(
-        self,
-        y_trues: torch.Tensor,
-        y_preds: torch.Tensor,
-        y_probs: torch.Tensor,
-    ):
-        """[summary]
-
-        Args:
-            y_trues (torch.Tensor): dtype=[torch.int64], shape=(num_samples, 1); (May be float if using BCEWithLogitsLoss)
-            y_preds (torch.Tensor): dtype=[torch.int64], shape=(num_samples, 1);
-            y_probs (torch.Tensor): dtype=[torch.float32], shape=(num_samples, num_classes);
-
-        Returns:
-            [type]: [description]
-        """
-        # TODO: To implement Ian's Results class here so that we can return as per the following link: https://ghnreigns.github.io/reighns-ml-website/supervised_learning/classification/breast_cancer_wisconsin/Stage%206%20-%20Modelling%20%28Preprocessing%20and%20Spot%20Checking%29/
-        # TODO: To think whether include num_classes, threshold etc in the arguments.
-        torchmetrics_accuracy = metrics.accuracy_score_torch(
-            y_trues,
-            y_preds,
-            num_classes=self.params.num_classes,
-            threshold=0.5,
-        )
-
-        auroc_dict = metrics.multiclass_roc_auc_score_torch(
-            y_trues,
-            y_probs,
-            num_classes=self.params.num_classes,
-        )
-
-        _auroc_all_classes, macro_auc = (
-            auroc_dict["auroc_per_class"],
-            auroc_dict["macro_auc"],
-        )
-
-        # TODO: To check robustness of the code for confusion matrix.
-        # macro_cm = metrics.tp_fp_tn_fn_binary(
-        #     y_true=y_trues, y_prob=y_probs, class_labels=[0, 1, 2, 3, 4]
-        # )
-
-        return {"accuracy": torchmetrics_accuracy, "macro_auroc": macro_auc}
-
     def get_regression_metrics(
         self,
         y_trues: torch.Tensor,
@@ -384,9 +341,6 @@ class Trainer:
             )
             valid_rmse = valid_metrics_dict["rmse"]
 
-            # TODO: Still need save each metric for each epoch into a list history. Rename properly
-            # TODO: Log each metric to wandb and log file.
-
             training_logger.info(
                 f"[RESULT]: Validation. Epoch {_epoch} | Avg Val Summary Loss: {valid_loss:.3f} | "
                 f"Valid RMSE: {valid_rmse:.3f} | "
@@ -409,83 +363,49 @@ class Trainer:
             # User has to choose a few metrics to monitor. Here I chose valid_loss and valid_rmse.
             self.monitored_metric["metric_score"] = torch.clone(valid_rmse)
 
-            if self.early_stopping is not None:
-                # TODO: Implement this properly, Add save_model_artifacts here as well.
-                best_score, early_stop = self.early_stopping.should_stop(
-                    curr_epoch_score=valid_loss
+            if valid_loss < self.best_valid_loss:
+                self.best_valid_loss = valid_loss
+
+            if self.monitored_metric["metric_score"] < self.best_valid_score:
+                training_logger.info(
+                    f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
                 )
-                self.best_valid_loss = best_score
+                self.best_valid_score = self.monitored_metric["metric_score"]
 
-                if early_stop:
-                    training_logger.info("Stopping Early!")
-                    break
+                # Reset patience counter as we found a new best score
+                patience_counter_ = self.patience_counter
+
+                saved_model_path = Path(
+                    self.model_path,
+                    f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
+                )
+                self.save_model_artifacts(
+                    saved_model_path,
+                    valid_trues,
+                    valid_logits,
+                    valid_preds,
+                    valid_probs,
+                )
+
+                shutil.copy(
+                    saved_model_path.__str__(),
+                    os.path.join(
+                        self.wandb_run.dir,
+                        f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
+                    ),
+                )
+
+                training_logger.info(
+                    f"\nSaving model with best valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
+                )
             else:
-
-                if valid_loss < self.best_valid_loss:
-                    self.best_valid_loss = valid_loss
-
-                if self.monitored_metric["mode"] == "max":
-                    if (
-                        self.monitored_metric["metric_score"]
-                        > self.best_valid_score
-                    ):
-                        training_logger.info(
-                            f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
-                        )
-                        self.best_valid_score = self.monitored_metric[
-                            "metric_score"
-                        ]
-
-                else:
-                    if (
-                        self.monitored_metric["metric_score"]
-                        < self.best_valid_score
-                    ):
-                        self.best_valid_score = self.monitored_metric[
-                            "metric_score"
-                        ]
-                        training_logger.info(
-                            f"\nValidation {self.monitored_metric['metric_name']} improved from {self.best_valid_score} to {self.monitored_metric['metric_score']}"
-                        )
-                        self.best_valid_score = self.monitored_metric[
-                            "metric_score"
-                        ]
-                        # Reset patience counter as we found a new best score
-                        patience_counter_ = self.patience_counter
-
-                        saved_model_path = Path(
-                            self.model_path,
-                            f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
-                        )
-                        self.save_model_artifacts(
-                            saved_model_path,
-                            valid_trues,
-                            valid_logits,
-                            valid_preds,
-                            valid_probs,
-                        )
-
-                        shutil.copy(
-                            saved_model_path.__str__(),
-                            os.path.join(
-                                self.wandb_run.dir,
-                                f"{self.params.model_name}_best_{self.monitored_metric['metric_name']}_fold_{fold}.pt",
-                            ),
-                        )
-
-                        training_logger.info(
-                            f"\nSaving model with best valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
-                        )
-                    else:
-                        patience_counter_ -= 1
-                        training_logger.info(
-                            f"Patience Counter {patience_counter_}"
-                        )
-                        if patience_counter_ == 0:
-                            training_logger.info(
-                                f"\n\nEarly Stopping, patience reached!\n\nbest valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
-                            )
-                            break
+                patience_counter_ -= 1
+                training_logger.info(f"Patience Counter {patience_counter_}")
+                if patience_counter_ == 0:
+                    training_logger.info(
+                        f"\n\nEarly Stopping, patience reached!\n\nbest valid {self.monitored_metric['metric_name']} score: {self.best_valid_score}"
+                    )
+                    break
             ########################## End of Early Stopping ############################
             ########################## End of Model Saving ##############################
 

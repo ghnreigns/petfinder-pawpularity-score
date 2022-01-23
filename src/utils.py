@@ -1,10 +1,12 @@
 # Utility functions.
+import gc
 import json
 import os
 import random
-from typing import Dict
+from pathlib import Path, PurePath
+from typing import Dict, Union, List
 from urllib.request import urlopen
-import gc
+
 import mlflow
 import numpy as np
 import torch
@@ -34,6 +36,59 @@ def seed_worker(_worker_id) -> None:
     worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
+
+
+def convert_path_to_str(path: Union[Path, str]) -> str:
+    """Convert Path to str.
+
+    Args:
+        path (Union[Path, str]): Path to convert.
+
+    Returns:
+        str: Converted path.
+
+    Examples:
+        >>> ot_raw_data_path = config.OTPaths().raw_data_folder
+        >>> list_pathlib_files = list(ot_raw_data_path.glob("**/*.xlsx"))
+        >>> map_list_to_string = list(map(convert_path_to_string, list_pathlib_files))
+    """
+    if isinstance(path, (Path, PurePath)):
+        return Path(path).as_posix()
+    return path
+
+
+def return_list_of_files(
+    directory: Union[str, Path],
+    return_string: bool = True,
+    extension: str = ".pt",
+) -> Union[List[str], List[Path]]:
+    """Returns a list of files in a directory.
+
+    Args:
+        directory (Union[str, Path]): The directory to search.
+        return_string (bool, optional): Whether to return a list of strings or Paths. Defaults to True.
+        extension (str, optional): The extension of the files to search for. Defaults to ".pt".
+
+    Returns:
+        List[str, Path]: List of files in the directory.
+    """
+
+    if return_string:
+        list_of_files = list(
+            map(
+                convert_path_to_str,
+                sorted(
+                    list(
+                        filter(Path.is_file, directory.glob(f"**/*{extension}"))
+                    )
+                ),
+            )
+        )
+    else:
+        list_of_files = sorted(
+            list(filter(Path.is_file, directory.glob(f"**/*{extension}")))
+        )
+    return list_of_files
 
 
 def load_json_from_url(url: str) -> Dict:
