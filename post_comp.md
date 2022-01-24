@@ -22,8 +22,10 @@
 - Added doc string for mixup: also do up a notebook for mixup to visualize and work out the math.
 - Add model params in ModelParams. Do in Cassava too.
 - talk bout lr finder?
+ 
+## Experiment 1 swin_large_patch4_window7_224_10_folds_1yksnj7z swin_large_patch4_window7_224_10_folds_3lcg145y
 
-## Experiment 1
+- timm == 0.4.12 if not won't reproduce exactly.
 
 ### Problem Statement
 

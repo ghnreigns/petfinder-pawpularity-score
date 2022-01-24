@@ -20,7 +20,9 @@ FILES = global_params.FilePaths()
 WANDB = global_params.WandbParams()
 device = config.DEVICE
 # MODEL_ARTIFACTS_PATH = global_params.FilePaths().get_model_artifacts_path()
-MODEL_ARTIFACTS_PATH = r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_3lcg145y"
+# MODEL_ARTIFACTS_PATH = r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_3lcg145y"
+MODEL_ARTIFACTS_PATH = r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_dq13dpjv"
+
 # 1. Push all inferenced models and oof and submissions to the same folder with the model weights.
 
 

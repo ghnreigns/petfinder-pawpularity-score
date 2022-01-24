@@ -230,7 +230,7 @@ class ModelParams:
 
 @dataclass
 class GlobalTrainParams:
-    debug: bool = True
+    debug: bool = False
     debug_multipler: int = 16
     epochs: int = 20  # 1 or 2 when debug
     use_amp: bool = True
@@ -291,7 +291,7 @@ class SchedulerParams:
     elif scheduler_name == "OneCycleLR":
         scheduler_params: Dict[str, Any] = field(
             default_factory=lambda: {
-                "max_lr": 2e-5,
+                "max_lr": 6e-4,
                 "steps_per_epoch": DataLoaderParams().get_len_train_loader(),
                 "epochs": GlobalTrainParams().epochs,
                 "pct_start": 0.25,

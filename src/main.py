@@ -302,25 +302,26 @@ def train_loop(*args, **kwargs):
 
 
 if __name__ == "__main__":
-    utils.seed_all()
+    utils.seed_all(seed=FOLDS.seed)
 
     # @Step 1: Download and load data.
     df_train, df_test, df_folds, df_sub = prepare.prepare_data()
 
-    is_inference = False
+    is_inference = True
     if not is_inference:
         df_oof = train_loop(
             df_folds=df_folds,
             is_plot=False,
             is_forward_pass=True,
             is_gradcam=False,
+            is_find_lr=False,
         )
 
     else:
         # TODO: model_dir is defined hardcoded, consider be able to pull the exact path from the saved logs/models from wandb even?
 
         model_dir = Path(
-            r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_3lcg145y"
+            r"C:\Users\reighns\reighns_ml\kaggle\petfinder\stores\model\swin_large_patch4_window7_224_swin_large_patch4_window7_224_10_folds_dq13dpjv"
         )
 
         weights = utils.return_list_of_files(

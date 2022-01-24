@@ -34,20 +34,20 @@ def get_train_transforms(image_size: int = TRANSFORMS.image_size):
             #     p=1.0,
             # ),
             albumentations.HorizontalFlip(p=0.5),
-            albumentations.VerticalFlip(p=0.5),
-            # albumentations.Rotate(limit=180, p=0.5),
-            # albumentations.ShiftScaleRotate(
-            #     shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=0.5
-            # ),
-            # albumentations.HueSaturationValue(
-            #     hue_shift_limit=0.2,
-            #     sat_shift_limit=0.2,
-            #     val_shift_limit=0.2,
-            #     p=0.5,
-            # ),
-            # albumentations.RandomBrightnessContrast(
-            #     brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5
-            # ),
+            albumentations.VerticalFlip(p=0.1),
+            albumentations.Rotate(limit=180, p=0.5),
+            albumentations.ShiftScaleRotate(
+                shift_limit=0.1, scale_limit=0.1, rotate_limit=45, p=0.5
+            ),
+            albumentations.HueSaturationValue(
+                hue_shift_limit=0.2,
+                sat_shift_limit=0.2,
+                val_shift_limit=0.2,
+                p=0.5,
+            ),
+            albumentations.RandomBrightnessContrast(
+                brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5
+            ),
             albumentations.Normalize(
                 mean=TRANSFORMS.mean,
                 std=TRANSFORMS.std,
