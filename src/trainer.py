@@ -136,7 +136,7 @@ class Trainer:
             ],
             betas=(opt_beta1, opt_beta2),
             eps=opt_eps,
-            lr=6e-6,
+            lr=6e-7,
             amsgrad=False,
         )
         return optimizer

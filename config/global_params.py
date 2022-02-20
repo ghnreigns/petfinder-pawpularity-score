@@ -67,7 +67,7 @@ class DataLoaderParams:
 
     train_loader: Dict[str, Any] = field(
         default_factory=lambda: {
-            "batch_size": 8,
+            "batch_size": 4,
             "num_workers": 2,
             "pin_memory": False,
             "drop_last": True,
@@ -135,7 +135,7 @@ class MakeFolds:
     """
 
     seed: int = 2999
-    num_folds: int = 10
+    num_folds: int = 5
     cv_schema: str = "StratifiedKFold"
     class_col_name: str = "Pawpularity"
     image_col_name: str = "Id"
@@ -205,7 +205,7 @@ class ModelParams:
     classification_type (str): classification type.
     """
 
-    model_name: str = "swin_large_patch4_window7_224"  # Debug
+    model_name: str = "beit_large_patch16_224"  # Debug beit_large_patch16_224 swin_large_patch4_window7_224
     pretrained: bool = True
     input_channels: int = 3
     output_dimension: int = 1
@@ -259,7 +259,7 @@ class OptimizerParams:
     optimizer_name: str = "AdamW"
     optimizer_params: Dict[str, Any] = field(
         default_factory=lambda: {
-            "lr": 3e-6,
+            "lr": 3e-7,
             "betas": (0.9, 0.999),
             "amsgrad": False,
             "weight_decay": 0.01,
